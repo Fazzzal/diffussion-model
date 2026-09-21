@@ -20,6 +20,16 @@ def main():
         / "cifar10_attention_unet.pth"
     )
 
+    sample_dir = (
+        project_root
+        / "samples"
+    )
+
+    sample_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
     model = UNet(
         in_channels=3,
         out_channels=3,
@@ -44,47 +54,56 @@ def main():
         device=device
     )
 
-    generated_images, trajectory = sample(
+    generated_images, _ = sample(
         model=model,
         scheduler=scheduler,
-        num_samples=1,
+        num_samples=16,
         image_size=32,
         channels=3,
         device=device
     )
 
+    generated_images = (
+        generated_images.clamp(-1, 1) + 1
+    ) / 2
+
     fig, axes = plt.subplots(
-        1,
-        len(trajectory),
-        figsize=(15, 3)
+        4,
+        4,
+        figsize=(8, 8)
     )
 
-    for ax, (timestep, images) in zip(
-        axes,
-        trajectory
+    for ax, image in zip(
+        axes.flatten(),
+        generated_images
     ):
-        image = images[0].cpu()
-
-        image = (
-            image.clamp(-1, 1) + 1
-        ) / 2
-
-        image = image.permute(
+        image = image.cpu().permute(
             1,
             2,
             0
         )
 
         ax.imshow(image)
-
-        ax.set_title(
-            f"t = {timestep}"
-        )
-
         ax.axis("off")
 
     plt.tight_layout()
+
+    output_path = (
+        sample_dir
+        / "cifar10_generated_grid.png"
+    )
+
+    plt.savefig(
+        output_path,
+        dpi=150,
+        bbox_inches="tight"
+    )
+
     plt.show()
+
+    print(
+        f"Generated images saved to: {output_path}"
+    )
 
 
 if __name__ == "__main__":
