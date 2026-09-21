@@ -6,14 +6,15 @@ def sample(
     model,
     scheduler,
     num_samples=16,
-    image_size=28,
+    image_size=32,
+    channels=3,
     device="cpu"
 ):
     model.eval()
 
     x = torch.randn(
         num_samples,
-        1,
+        channels,
         image_size,
         image_size,
         device=device
@@ -21,9 +22,7 @@ def sample(
 
     trajectory = []
 
-    for timestep in reversed(
-        range(scheduler.num_timesteps)
-    ):
+    for timestep in reversed(range(scheduler.num_timesteps)):
         t = torch.full(
             (num_samples,),
             timestep,

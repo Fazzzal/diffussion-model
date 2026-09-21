@@ -3,31 +3,44 @@ import torch
 from pathlib import Path
 
 from diffusion.scheduler import DiffusionScheduler
-from diffusion.unet import DiffusionUNet
+from diffusion.unet import UNet
 from diffusion.sampler import sample
 
 
 def main():
-    device = torch.device("cpu")
-
-    model = DiffusionUNet().to(device)
+    device = torch.device(
+        "cuda" if torch.cuda.is_available() else "cpu"
+    )
 
     project_root = Path(__file__).resolve().parent.parent
 
     checkpoint_path = (
         project_root
         / "checkpoints"
-        / "mnist_attention_unet.pth"
+        / "cifar10_attention_unet.pth"
+    )
+
+    model = UNet(
+        in_channels=3,
+        out_channels=3,
+        base_channels=32,
+        time_embedding_dim=128
+    ).to(device)
+
+    checkpoint = torch.load(
+        checkpoint_path,
+        map_location=device,
+        weights_only=False
     )
 
     model.load_state_dict(
-        torch.load(
-            checkpoint_path,
-            map_location=device
-        )
+        checkpoint["model_state_dict"]
     )
 
     scheduler = DiffusionScheduler(
+        num_timesteps=1000,
+        beta_start=0.0001,
+        beta_end=0.02,
         device=device
     )
 
@@ -35,7 +48,8 @@ def main():
         model=model,
         scheduler=scheduler,
         num_samples=1,
-        image_size=28,
+        image_size=32,
+        channels=3,
         device=device
     )
 
@@ -49,16 +63,24 @@ def main():
         axes,
         trajectory
     ):
-        image = images[0, 0].cpu()
+        image = images[0].cpu()
 
-        image = (image.clamp(-1, 1) + 1) / 2
+        image = (
+            image.clamp(-1, 1) + 1
+        ) / 2
 
-        ax.imshow(
-            image,
-            cmap="gray"
+        image = image.permute(
+            1,
+            2,
+            0
         )
 
-        ax.set_title(f"t = {timestep}")
+        ax.imshow(image)
+
+        ax.set_title(
+            f"t = {timestep}"
+        )
+
         ax.axis("off")
 
     plt.tight_layout()
