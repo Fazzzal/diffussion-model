@@ -1,0 +1,27 @@
+data:
+  dataset: mnist
+  data_dir: data
+  image_size: 28
+  channels: 1
+
+training:
+  epochs: 5
+  batch_size: 64
+  learning_rate: 0.001
+  seed: 42
+
+diffusion:
+  timesteps: 1000
+  beta_start: 0.0001
+  beta_end: 0.02
+
+model:
+  base_channels: 32
+  time_embedding_dim: 128
+
+paths:
+  checkpoint_dir: checkpoints
+  sample_dir: samples
+  log_dir: logs
+
+device: cpu
