@@ -7,7 +7,7 @@ from diffusion.unet import UNet
 from diffusion.sampler import sample
 
 
-def load_model(checkpoint, device):
+def load_standard_model(checkpoint, device):
     model = UNet(
         in_channels=3,
         out_channels=3,
@@ -48,8 +48,14 @@ def generate_images(
     model,
     scheduler,
     device,
+    seed,
     num_samples=16
 ):
+    torch.manual_seed(seed)
+
+    if device.type == "cuda":
+        torch.cuda.manual_seed(seed)
+
     images, _ = sample(
         model=model,
         scheduler=scheduler,
@@ -59,35 +65,56 @@ def generate_images(
         device=device
     )
 
-    return (
+    images = (
         images.clamp(-1, 1) + 1
     ) / 2
 
+    return images
 
-def plot_grid(images, title, output_path):
+
+def plot_comparison(
+    standard_images,
+    ema_images,
+    output_path
+):
     fig, axes = plt.subplots(
         4,
-        4,
-        figsize=(8, 8)
+        8,
+        figsize=(16, 8)
     )
 
-    for ax, image in zip(
-        axes.flatten(),
-        images
-    ):
-        image = image.cpu().permute(
-            1,
-            2,
-            0
+    for i in range(16):
+        row = i // 4
+        pair = i % 4
+
+        standard_column = pair * 2
+        ema_column = standard_column + 1
+
+        standard_image = (
+            standard_images[i]
+            .cpu()
+            .permute(1, 2, 0)
         )
 
-        ax.imshow(image)
-        ax.axis("off")
+        ema_image = (
+            ema_images[i]
+            .cpu()
+            .permute(1, 2, 0)
+        )
 
-    fig.suptitle(
-        title,
-        fontsize=16
-    )
+        axes[row, standard_column].imshow(
+            standard_image
+        )
+
+        axes[row, ema_column].imshow(
+            ema_image
+        )
+
+        axes[row, standard_column].axis("off")
+        axes[row, ema_column].axis("off")
+
+    axes[0, 0].set_title("Standard")
+    axes[0, 1].set_title("EMA")
 
     plt.tight_layout()
 
@@ -100,10 +127,10 @@ def plot_grid(images, title, output_path):
     plt.show()
     plt.close(fig)
 
-
 def main():
     device = torch.device(
-        "cuda" if torch.cuda.is_available() else "cpu"
+        "cuda" if torch.cuda.is_available()
+        else "cpu"
     )
 
     project_root = Path(__file__).resolve().parent.parent
@@ -137,7 +164,7 @@ def main():
         device=device
     )
 
-    normal_model = load_model(
+    standard_model = load_standard_model(
         checkpoint,
         device
     )
@@ -147,28 +174,35 @@ def main():
         device
     )
 
-    normal_images = generate_images(
-        normal_model,
+    seed = 42
+
+    standard_images = generate_images(
+        standard_model,
         scheduler,
-        device
+        device,
+        seed
     )
 
     ema_images = generate_images(
         ema_model,
         scheduler,
-        device
+        device,
+        seed
     )
 
-    plot_grid(
-        normal_images,
-        "CIFAR-10 DDPM - Standard Model",
-        sample_dir / "cifar10_standard_grid.png"
+    output_path = (
+        sample_dir
+        / "standard_vs_ema.png"
     )
 
-    plot_grid(
+    plot_comparison(
+        standard_images,
         ema_images,
-        "CIFAR-10 DDPM - EMA Model",
-        sample_dir / "cifar10_ema_grid.png"
+        output_path
+    )
+
+    print(
+        f"Comparison saved to: {output_path}"
     )
 
 
