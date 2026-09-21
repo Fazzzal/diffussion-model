@@ -17,7 +17,7 @@ def main():
     checkpoint_path = (
         project_root
         / "checkpoints"
-        / "diffusion_mnist.pth"
+        / "mnist_attention_unet.pth"
     )
 
     model.load_state_dict(

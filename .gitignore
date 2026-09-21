@@ -3,4 +3,11 @@
 .env
 __pycache__/
 .*pyc
+data/
+training/data
+logs/
+samples/
+checkpoints/
+*.pth
+runs/
 

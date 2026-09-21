@@ -1,11 +1,11 @@
 data:
-  dataset: mnist
+  dataset: cifar10
   data_dir: data
-  image_size: 28
-  channels: 1
+  image_size: 32
+  channels: 3
 
 training:
-  epochs: 5
+  epochs: 10
   batch_size: 64
   learning_rate: 0.001
   seed: 42
@@ -24,4 +24,4 @@ paths:
   sample_dir: samples
   log_dir: logs
 
-device: cpu
+device: cuda
