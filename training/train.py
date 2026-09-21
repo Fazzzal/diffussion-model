@@ -13,6 +13,7 @@ from data_loaders.cifar10 import get_cifar10_dataloader
 from diffusion.scheduler import DiffusionScheduler
 from diffusion.unet import UNet
 from training.loss import diffusion_loss
+from diffusion.ema import EMA
 
 
 def set_seed(seed):
@@ -71,6 +72,11 @@ def main():
         time_embedding_dim=config["model"]["time_embedding_dim"]
     ).to(device)
 
+    ema = EMA(
+        model,
+        decay=0.999
+    )
+
     scheduler = DiffusionScheduler(
         num_timesteps=config["diffusion"]["timesteps"],
         beta_start=config["diffusion"]["beta_start"],
@@ -124,12 +130,13 @@ def main():
 
         checkpoint = torch.load(
             checkpoint_path,
-            map_location=device
+            map_location=device,
+            weights_only=False
         )
 
         if (
-            isinstance(checkpoint, dict)
-            and "model_state_dict" in checkpoint
+                isinstance(checkpoint, dict)
+                and "model_state_dict" in checkpoint
         ):
             model.load_state_dict(
                 checkpoint["model_state_dict"]
@@ -138,6 +145,23 @@ def main():
             if "optimizer_state_dict" in checkpoint:
                 optimizer.load_state_dict(
                     checkpoint["optimizer_state_dict"]
+                )
+
+            if "ema_state_dict" in checkpoint:
+                ema.load_state_dict(
+                    checkpoint["ema_state_dict"]
+                )
+
+                print("Loaded EMA weights.")
+            else:
+                print(
+                    "No EMA weights found. "
+                    "Initializing EMA from model."
+                )
+
+                ema = EMA(
+                    model,
+                    decay=0.999
                 )
 
             start_epoch = checkpoint.get(
@@ -213,6 +237,8 @@ def main():
 
             optimizer.step()
 
+            ema.update(model)
+
             loss_value = loss.item()
 
             epoch_loss += loss_value
@@ -254,6 +280,7 @@ def main():
         checkpoint = {
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
+            "ema_state_dict": ema.state_dict(),
             "epoch": epoch + 1,
             "loss": average_loss,
             "config": config
