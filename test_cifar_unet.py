@@ -4,7 +4,10 @@ from diffusion.unet import UNet
 
 
 def main():
-    device = "cpu"
+    device = torch.device(
+        "cuda" if torch.cuda.is_available()
+        else "cpu"
+    )
 
     model = UNet(
         in_channels=3,
@@ -21,26 +24,35 @@ def main():
         device=device
     )
 
-    t = torch.randint(
+    timesteps = torch.randint(
         0,
         1000,
         (4,),
         device=device
     )
 
-    with torch.no_grad():
-        output = model(x, t)
-
-    print("Input shape:", x.shape)
-    print("Timestep shape:", t.shape)
-    print("Output shape:", output.shape)
-
-    total_parameters = sum(
-        p.numel()
-        for p in model.parameters()
+    output = model(
+        x,
+        timesteps
     )
 
-    print("Number of parameters:", total_parameters)
+    print(
+        "Input shape:",
+        x.shape
+    )
+
+    print(
+        "Output shape:",
+        output.shape
+    )
+
+    print(
+        "Number of parameters:",
+        sum(
+            p.numel()
+            for p in model.parameters()
+        )
+    )
 
 
 if __name__ == "__main__":

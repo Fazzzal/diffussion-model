@@ -101,9 +101,14 @@ def main():
         exist_ok=True
     )
 
-    checkpoint_path = (
-        checkpoint_dir /
+    checkpoint_name = config["model"].get(
+        "checkpoint_name",
         f"{dataset_name}_attention_unet.pth"
+    )
+
+    checkpoint_path = (
+            checkpoint_dir /
+            checkpoint_name
     )
 
     log_dir = (
