@@ -138,7 +138,7 @@ def main():
     checkpoint_path = (
         project_root
         / "checkpoints"
-        / "cifar10_attention_unet.pth"
+        / "cifar10_large_attention_unet.pth"
     )
 
     sample_dir = (
