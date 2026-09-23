@@ -5,9 +5,9 @@ data:
   channels: 3
 
 training:
-  epochs: 50
+  epochs: 100
   batch_size: 64
-  learning_rate: 0.001
+  learning_rate: 0.0002
   seed: 42
 
 diffusion:
@@ -16,9 +16,9 @@ diffusion:
   beta_end: 0.02
 
 model:
-  base_channels: 32
-  time_embedding_dim: 128
-  checkpoint_name: cifar10_large_attention_unet.pth
+  base_channels: 64
+  time_embedding_dim: 256
+  checkpoint_name: cifar10_base64_unet.pth
 
 paths:
   checkpoint_dir: checkpoints
