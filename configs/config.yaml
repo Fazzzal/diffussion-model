@@ -5,10 +5,16 @@ data:
   channels: 3
 
 training:
-  epochs: 100
+  epochs: 300
   batch_size: 64
   learning_rate: 0.0002
   seed: 42
+  ema_decay: 0.9999
+  use_amp: true
+  grad_clip: 1.0
+  num_workers: 2
+  max_hours: 8.0
+
 
 diffusion:
   timesteps: 1000
@@ -16,9 +22,9 @@ diffusion:
   beta_end: 0.02
 
 model:
-  base_channels: 64
-  time_embedding_dim: 256
-  checkpoint_name: cifar10_base64_unet.pth
+  base_channels: 128
+  time_embedding_dim: 512
+  checkpoint_name: cifar10_base128_unet.pth
 
 paths:
   checkpoint_dir: checkpoints

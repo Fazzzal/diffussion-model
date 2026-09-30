@@ -8,7 +8,8 @@ def sample(
     num_samples=16,
     image_size=32,
     channels=3,
-    device="cpu"
+    device="cpu",
+    use_amp=False
 ):
     model.eval()
 
@@ -30,10 +31,17 @@ def sample(
             dtype=torch.long
         )
 
-        predicted_noise = model(
-            x,
-            t
-        )
+        with torch.autocast(
+            device_type="cuda",
+            dtype=torch.float16,
+            enabled=use_amp and str(device).startswith("cuda")
+        ):
+            predicted_noise = model(
+                x,
+                t
+            )
+
+        predicted_noise = predicted_noise.float()
 
         x = scheduler.step(
             predicted_noise,

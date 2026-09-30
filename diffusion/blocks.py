@@ -7,7 +7,8 @@ class ResidualBlock(nn.Module):
         self,
         in_channels,
         out_channels,
-        time_embedding_dim
+        time_embedding_dim,
+        dropout=0.0
     ):
         super().__init__()
 
@@ -34,6 +35,8 @@ class ResidualBlock(nn.Module):
             num_groups=8,
             num_channels=out_channels
         )
+
+        self.dropout = nn.Dropout(dropout)
 
         self.conv2 = nn.Conv2d(
             out_channels,
@@ -66,6 +69,7 @@ class ResidualBlock(nn.Module):
 
         x = self.norm2(x)
         x = self.activation(x)
+        x = self.dropout(x)
         x = self.conv2(x)
 
         return x + residual

@@ -12,7 +12,8 @@ class UNet(nn.Module):
         in_channels=3,
         out_channels=3,
         base_channels=32,
-        time_embedding_dim=128
+        time_embedding_dim=128,
+        dropout=0.0
     ):
         super().__init__()
 
@@ -47,7 +48,8 @@ class UNet(nn.Module):
         self.down1 = ResidualBlock(
             c1,
             c1,
-            time_embedding_dim
+            time_embedding_dim,
+            dropout
         )
 
         self.downsample1 = nn.Conv2d(
@@ -61,7 +63,8 @@ class UNet(nn.Module):
         self.down2 = ResidualBlock(
             c2,
             c2,
-            time_embedding_dim
+            time_embedding_dim,
+            dropout
         )
 
         self.attention2 = SelfAttentionBlock(
@@ -79,7 +82,8 @@ class UNet(nn.Module):
         self.down3 = ResidualBlock(
             c3,
             c3,
-            time_embedding_dim
+            time_embedding_dim,
+            dropout
         )
 
         self.attention3 = SelfAttentionBlock(
@@ -97,7 +101,8 @@ class UNet(nn.Module):
         self.middle1 = ResidualBlock(
             c4,
             c4,
-            time_embedding_dim
+            time_embedding_dim,
+            dropout
         )
 
         self.middle_attention = SelfAttentionBlock(
@@ -107,7 +112,8 @@ class UNet(nn.Module):
         self.middle2 = ResidualBlock(
             c4,
             c4,
-            time_embedding_dim
+            time_embedding_dim,
+            dropout
         )
 
         self.upsample3 = nn.ConvTranspose2d(
@@ -121,7 +127,8 @@ class UNet(nn.Module):
         self.up3 = ResidualBlock(
             c3 * 2,
             c3,
-            time_embedding_dim
+            time_embedding_dim,
+            dropout
         )
 
         self.attention_up3 = SelfAttentionBlock(
@@ -139,7 +146,8 @@ class UNet(nn.Module):
         self.up2 = ResidualBlock(
             c2 * 2,
             c2,
-            time_embedding_dim
+            time_embedding_dim,
+            dropout
         )
 
         self.attention_up2 = SelfAttentionBlock(
@@ -157,7 +165,8 @@ class UNet(nn.Module):
         self.up1 = ResidualBlock(
             c1 * 2,
             c1,
-            time_embedding_dim
+            time_embedding_dim,
+            dropout
         )
 
         self.output_norm = nn.GroupNorm(

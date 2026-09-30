@@ -8,11 +8,13 @@ from diffusion.sampler import sample
 
 
 def load_standard_model(checkpoint, device):
+    cfg = checkpoint["config"]
+
     model = UNet(
         in_channels=3,
         out_channels=3,
-        base_channels=32,
-        time_embedding_dim=128
+        base_channels=cfg["model"]["base_channels"],
+        time_embedding_dim=cfg["model"]["time_embedding_dim"]
     ).to(device)
 
     model.load_state_dict(
@@ -23,11 +25,13 @@ def load_standard_model(checkpoint, device):
 
 
 def load_ema_model(checkpoint, device):
+    cfg = checkpoint["config"]
+
     model = UNet(
         in_channels=3,
         out_channels=3,
-        base_channels=32,
-        time_embedding_dim=128
+        base_channels=cfg["model"]["base_channels"],
+        time_embedding_dim=cfg["model"]["time_embedding_dim"]
     ).to(device)
 
     model.load_state_dict(
@@ -138,7 +142,7 @@ def main():
     checkpoint_path = (
         project_root
         / "checkpoints"
-        / "cifar10_large_attention_unet.pth"
+        / "cifar10_base128_unet.pth"
     )
 
     sample_dir = (

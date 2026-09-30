@@ -1,4 +1,6 @@
+import os
 import random
+import time
 from pathlib import Path
 
 import numpy as np
@@ -56,7 +58,8 @@ def main():
     elif dataset_name == "cifar10":
         dataloader = get_cifar10_dataloader(
             batch_size=batch_size,
-            data_dir=str(data_dir)
+            data_dir=str(data_dir),
+            num_workers=config["training"].get("num_workers", 0)
         )
     else:
         raise ValueError(
@@ -65,16 +68,31 @@ def main():
 
     channels = config["data"]["channels"]
 
+    ema_decay = config["training"].get("ema_decay", 0.9999)
+    use_amp = (
+        config["training"].get("use_amp", False)
+        and device.type == "cuda"
+    )
+    grad_clip = config["training"].get("grad_clip", None)
+    scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
+
+    torch.backends.cudnn.benchmark = True
+
+    # Stop cleanly before Kaggle's session limit; rerun to resume.
+    max_hours = config["training"].get("max_hours", None)
+    session_start = time.time()
+
     model = UNet(
         in_channels=channels,
         out_channels=channels,
         base_channels=config["model"]["base_channels"],
-        time_embedding_dim=config["model"]["time_embedding_dim"]
+        time_embedding_dim=config["model"]["time_embedding_dim"],
+        dropout=config["model"].get("dropout", 0.0)
     ).to(device)
 
     ema = EMA(
         model,
-        decay=0.999
+        decay=ema_decay
     )
 
     scheduler = DiffusionScheduler(
@@ -166,7 +184,12 @@ def main():
 
                 ema = EMA(
                     model,
-                    decay=0.999
+                    decay=ema_decay
+                )
+
+            if "scaler_state_dict" in checkpoint:
+                scaler.load_state_dict(
+                    checkpoint["scaler_state_dict"]
                 )
 
             start_epoch = checkpoint.get(
@@ -198,7 +221,10 @@ def main():
 
     model.train()
 
+    stopped_early = False
+
     for epoch in range(start_epoch, epochs):
+        epoch_start = time.time()
         epoch_loss = 0.0
 
         progress_bar = tqdm(
@@ -226,21 +252,34 @@ def main():
                 timesteps
             )
 
-            predicted_noise = model(
-                noisy_images,
-                timesteps
-            )
+            with torch.autocast(
+                device_type="cuda",
+                dtype=torch.float16,
+                enabled=use_amp
+            ):
+                predicted_noise = model(
+                    noisy_images,
+                    timesteps
+                )
 
             loss = diffusion_loss(
-                predicted_noise,
+                predicted_noise.float(),
                 noise
             )
 
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
 
-            loss.backward()
+            scaler.scale(loss).backward()
 
-            optimizer.step()
+            if grad_clip:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(),
+                    grad_clip
+                )
+
+            scaler.step(optimizer)
+            scaler.update()
 
             ema.update(model)
 
@@ -286,25 +325,44 @@ def main():
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             "ema_state_dict": ema.state_dict(),
+            "scaler_state_dict": scaler.state_dict(),
             "epoch": epoch + 1,
             "loss": average_loss,
             "config": config
         }
 
-        torch.save(
-            checkpoint,
-            checkpoint_path
-        )
+        # Atomic save: a session killed mid-write can't corrupt it.
+        tmp_path = str(checkpoint_path) + ".tmp"
+        torch.save(checkpoint, tmp_path)
+        os.replace(tmp_path, checkpoint_path)
 
         print(
             f"Checkpoint saved after epoch "
             f"{epoch + 1}: {checkpoint_path}"
         )
 
+        if max_hours:
+            elapsed = time.time() - session_start
+            epoch_time = time.time() - epoch_start
+            print(
+                f"Session time: {elapsed / 3600:.2f}h "
+                f"(epoch took {epoch_time / 60:.1f} min)"
+            )
+            if elapsed + epoch_time * 1.2 > max_hours * 3600:
+                stopped_early = True
+                print(
+                    "Time budget reached. Rerun the same command "
+                    "in a new session to resume."
+                )
+                break
+
     writer.close()
 
     print()
-    print("Training complete.")
+    if stopped_early:
+        print("Stopped for time limit (not finished).")
+    else:
+        print("Training complete.")
     print(f"Final checkpoint: {checkpoint_path}")
     print(f"TensorBoard logs: {log_dir}")
 
