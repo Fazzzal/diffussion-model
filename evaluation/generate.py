@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import torch
 from pathlib import Path
+import random
 
 from diffusion.scheduler import DiffusionScheduler
 from diffusion.unet import UNet
@@ -178,7 +179,9 @@ def main():
         device
     )
 
-    seed = 42
+
+    seed = random.randint(0, 1000000)
+    print(f"Using seed: {seed}")
 
     standard_images = generate_images(
         standard_model,
